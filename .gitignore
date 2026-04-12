@@ -1,5 +1,25 @@
 .env
+.env.*
 /bot
+
+# OS / editor junk
+.DS_Store
+.vscode/
+
+# Local runtime data
 data/*.sqlite
 data/*.sqlite-shm
 data/*.sqlite-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+*.db-shm
+*.db-wal
+session.json
+
+# Local debug / test artifacts
+__debug*
+*.test
+coverage.*
+profile.out

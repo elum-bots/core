@@ -1,6 +1,0 @@
-*.sum
-*.txt
-*.exe
-/.vscode/
-/.idea/
-/vendor
