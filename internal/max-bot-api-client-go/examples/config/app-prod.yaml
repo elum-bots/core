@@ -1,0 +1,3 @@
+
+http.bot.api.url: https://botapi.max.ru/
+http.bot.api.timeout: 30
