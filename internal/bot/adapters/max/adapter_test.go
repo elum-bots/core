@@ -2,6 +2,7 @@ package max
 
 import (
 	"testing"
+	"time"
 
 	"github.com/elum-bots/core/internal/bot"
 	"github.com/elum-bots/core/internal/max-bot-api-client-go/schemes"
@@ -126,5 +127,21 @@ func TestCurrentCallbackID(t *testing.T) {
 	}
 	if got != "cb-123" {
 		t.Fatalf("callbackIDFromUpdate() = %q, want %q", got, "cb-123")
+	}
+}
+
+func TestWithHTTPTimeout(t *testing.T) {
+	a, err := NewAdapter("test-token")
+	if err != nil {
+		t.Fatalf("NewAdapter() error = %v", err)
+	}
+
+	WithHTTPTimeout(95 * time.Second)(a)
+
+	if a.api == nil {
+		t.Fatalf("adapter api is nil")
+	}
+	if got := a.httpTimeout; got != 95*time.Second {
+		t.Fatalf("http timeout = %v, want %v", got, 95*time.Second)
 	}
 }

@@ -12,6 +12,7 @@ type Config struct {
 	TGPollTimeoutSec     int
 	TGPollLimit          int
 	MAXBotToken          string
+	MAXHTTPTimeoutSec    int
 	BotMaxConcurrent     int
 	SQLitePath           string
 	HTTPAddr             string
@@ -30,8 +31,10 @@ type Config struct {
 	PlategaFailedURL     string
 	DeepSeekModel        string
 	DeepSeekBaseURL      string
+	DeepSeekProxyURL     string
 	DeepSeekTimeoutSec   int
 	GeminiModel          string
+	GeminiProxyURL       string
 	GeminiTimeoutSec     int
 }
 
@@ -42,6 +45,7 @@ func LoadConfig() Config {
 		TGPollTimeoutSec:     env.GetEnvInt("TG_POLL_TIMEOUT_SEC", 30),
 		TGPollLimit:          env.GetEnvInt("TG_POLL_LIMIT", 100),
 		MAXBotToken:          strings.TrimSpace(env.GetEnvString("MAX_BOT_TOKEN", "")),
+		MAXHTTPTimeoutSec:    env.GetEnvInt("MAX_HTTP_TIMEOUT_SEC", 120),
 		BotMaxConcurrent:     env.GetEnvInt("BOT_MAX_CONCURRENT", 50),
 		SQLitePath:           strings.TrimSpace(env.GetEnvString("SQLITE_PATH", "./data/bot.sqlite")),
 		HTTPAddr:             strings.TrimSpace(env.GetEnvString("HTTP_ADDR", ":8080")),
@@ -59,8 +63,10 @@ func LoadConfig() Config {
 		PlategaFailedURL:     strings.TrimSpace(env.GetEnvString("PLATEGA_FAILED_URL", "")),
 		DeepSeekModel:        strings.TrimSpace(env.GetEnvString("DEEPSEEK_MODEL", "deepseek-chat")),
 		DeepSeekBaseURL:      strings.TrimSpace(env.GetEnvString("DEEPSEEK_BASE_URL", "https://api.deepseek.com")),
+		DeepSeekProxyURL:     strings.TrimSpace(env.GetEnvString("DEEPSEEK_PROXY_URL", "")),
 		DeepSeekTimeoutSec:   env.GetEnvInt("DEEPSEEK_TIMEOUT_SEC", 60),
 		GeminiModel:          strings.TrimSpace(env.GetEnvString("GEMINI_MODEL", "gemini-2.5-flash-image")),
+		GeminiProxyURL:       strings.TrimSpace(env.GetEnvString("GEMINI_PROXY_URL", "")),
 		GeminiTimeoutSec:     env.GetEnvInt("GEMINI_TIMEOUT_SEC", 180),
 		WebhookUpdateTypes: normalizeWebhookTypes(
 			env.GetEnvArrayString(

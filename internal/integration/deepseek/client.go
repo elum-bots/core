@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	sharedhttp "github.com/elum-bots/core/internal/integration/httpclient"
 )
 
 const defaultBaseURL = "https://api.deepseek.com"
@@ -44,7 +46,7 @@ type chatResponse struct {
 	} `json:"error,omitempty"`
 }
 
-func NewClient(apiKey, model, baseURL string, timeout time.Duration) (*Client, error) {
+func NewClient(apiKey, model, baseURL string, timeout time.Duration, proxyURL string) (*Client, error) {
 	if strings.TrimSpace(apiKey) == "" {
 		return nil, errors.New("deepseek api key is empty")
 	}
@@ -58,12 +60,16 @@ func NewClient(apiKey, model, baseURL string, timeout time.Duration) (*Client, e
 	if timeout <= 0 {
 		timeout = 60 * time.Second
 	}
+	httpClient, err := sharedhttp.New(timeout, proxyURL)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Client{
 		baseURL:    baseURL,
 		apiKey:     strings.TrimSpace(apiKey),
 		model:      strings.TrimSpace(model),
-		httpClient: &http.Client{Timeout: timeout},
+		httpClient: httpClient,
 	}, nil
 }
 

@@ -17,17 +17,18 @@ type TokenSource interface {
 }
 
 type Service struct {
-	source  TokenSource
-	model   string
-	timeout time.Duration
-	ttl     time.Duration
+	source   TokenSource
+	model    string
+	proxyURL string
+	timeout  time.Duration
+	ttl      time.Duration
 
 	mu        sync.RWMutex
 	cachedAt  time.Time
 	generator *Generator
 }
 
-func NewService(ctx context.Context, source TokenSource, model string, timeout, ttl time.Duration) (*Service, error) {
+func NewService(ctx context.Context, source TokenSource, model string, timeout, ttl time.Duration, proxyURL string) (*Service, error) {
 	if source == nil {
 		return nil, errors.New("gemini token source is nil")
 	}
@@ -35,10 +36,11 @@ func NewService(ctx context.Context, source TokenSource, model string, timeout, 
 		ttl = time.Minute
 	}
 	return &Service{
-		source:  source,
-		model:   strings.TrimSpace(model),
-		timeout: timeout,
-		ttl:     ttl,
+		source:   source,
+		model:    strings.TrimSpace(model),
+		proxyURL: strings.TrimSpace(proxyURL),
+		timeout:  timeout,
+		ttl:      ttl,
 	}, nil
 }
 
@@ -90,7 +92,7 @@ func (s *Service) generatorFor(ctx context.Context) (*Generator, error) {
 		return nil, ErrNoTokensConfigured
 	}
 
-	generator, err := NewGenerator(ctx, strings.Join(tokens, ","), s.model, s.timeout)
+	generator, err := NewGenerator(ctx, strings.Join(tokens, ","), s.model, s.timeout, s.proxyURL)
 	if err != nil {
 		return nil, err
 	}

@@ -118,6 +118,7 @@ func runMAX(
 	if err != nil {
 		return err
 	}
+	maxadapter.WithHTTPTimeout(time.Duration(cfg.MAXHTTPTimeoutSec) * time.Second)(adapter)
 
 	b, err := newBot(ctx, adapter, cfg, deps, opts)
 	if err != nil {

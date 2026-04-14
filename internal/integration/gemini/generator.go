@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	sharedhttp "github.com/elum-bots/core/internal/integration/httpclient"
 	"google.golang.org/genai"
 )
 
@@ -24,7 +25,7 @@ type Generator struct {
 	nextClient atomic.Uint64
 }
 
-func NewGenerator(ctx context.Context, apiKey string, model string, timeout time.Duration) (*Generator, error) {
+func NewGenerator(ctx context.Context, apiKey string, model string, timeout time.Duration, proxyURL string) (*Generator, error) {
 	keys := parseAPIKeys(apiKey)
 	if len(keys) == 0 {
 		return nil, errors.New("gemini api key is empty")
@@ -35,11 +36,16 @@ func NewGenerator(ctx context.Context, apiKey string, model string, timeout time
 	if timeout <= 0 {
 		timeout = 3 * time.Minute
 	}
+	httpClient, err := sharedhttp.New(timeout, proxyURL)
+	if err != nil {
+		return nil, err
+	}
 	clients := make([]*genai.Client, 0, len(keys))
 	for _, key := range keys {
 		client, err := genai.NewClient(ctx, &genai.ClientConfig{
-			APIKey:  key,
-			Backend: genai.BackendGeminiAPI,
+			APIKey:     key,
+			Backend:    genai.BackendGeminiAPI,
+			HTTPClient: httpClient,
 		})
 		if err != nil {
 			return nil, err
@@ -48,7 +54,7 @@ func NewGenerator(ctx context.Context, apiKey string, model string, timeout time
 	}
 	return &Generator{
 		clients:    clients,
-		httpClient: &http.Client{},
+		httpClient: httpClient,
 		model:      model,
 		timeout:    timeout,
 	}, nil

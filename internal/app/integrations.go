@@ -22,6 +22,7 @@ func newIntegrationServices(ctx context.Context, cfg Config, store *db.Store) (*
 			cfg.DeepSeekBaseURL,
 			time.Duration(cfg.DeepSeekTimeoutSec)*time.Second,
 			time.Minute,
+			cfg.DeepSeekProxyURL,
 		)
 		if err != nil {
 			return nil, err
@@ -36,6 +37,7 @@ func newIntegrationServices(ctx context.Context, cfg Config, store *db.Store) (*
 			cfg.GeminiModel,
 			time.Duration(cfg.GeminiTimeoutSec)*time.Second,
 			time.Minute,
+			cfg.GeminiProxyURL,
 		)
 		if err != nil {
 			return nil, err

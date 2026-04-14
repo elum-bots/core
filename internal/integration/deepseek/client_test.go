@@ -22,7 +22,7 @@ func TestClientCompleteSuccess(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := NewClient("test-key", "", srv.URL, time.Second)
+	client, err := NewClient("test-key", "", srv.URL, time.Second, "")
 	if err != nil {
 		t.Fatalf("NewClient() error = %v", err)
 	}
@@ -42,7 +42,7 @@ func TestClientRateLimited(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := NewClient("test-key", "", srv.URL, time.Second)
+	client, err := NewClient("test-key", "", srv.URL, time.Second, "")
 	if err != nil {
 		t.Fatalf("NewClient() error = %v", err)
 	}
@@ -54,7 +54,7 @@ func TestClientRateLimited(t *testing.T) {
 }
 
 func TestNewClientDefaults(t *testing.T) {
-	client, err := NewClient("test-key", "", "", time.Second)
+	client, err := NewClient("test-key", "", "", time.Second, "")
 	if err != nil {
 		t.Fatalf("NewClient() error = %v", err)
 	}
@@ -63,5 +63,30 @@ func TestNewClientDefaults(t *testing.T) {
 	}
 	if !strings.HasPrefix(client.baseURL, "https://") {
 		t.Fatalf("baseURL = %q, want https://...", client.baseURL)
+	}
+}
+
+func TestNewClientProxy(t *testing.T) {
+	client, err := NewClient("test-key", "", "", time.Second, "http://127.0.0.1:8080")
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+
+	transport, ok := client.httpClient.Transport.(*http.Transport)
+	if !ok {
+		t.Fatalf("transport type = %T, want *http.Transport", client.httpClient.Transport)
+	}
+
+	req, err := http.NewRequest(http.MethodGet, "https://example.com", nil)
+	if err != nil {
+		t.Fatalf("http.NewRequest() error = %v", err)
+	}
+
+	proxyURL, err := transport.Proxy(req)
+	if err != nil {
+		t.Fatalf("transport.Proxy() error = %v", err)
+	}
+	if proxyURL == nil || proxyURL.String() != "http://127.0.0.1:8080" {
+		t.Fatalf("proxyURL = %v, want %q", proxyURL, "http://127.0.0.1:8080")
 	}
 }

@@ -18,11 +18,12 @@ type TokenSource interface {
 }
 
 type Service struct {
-	source  TokenSource
-	model   string
-	baseURL string
-	timeout time.Duration
-	ttl     time.Duration
+	source   TokenSource
+	model    string
+	baseURL  string
+	proxyURL string
+	timeout  time.Duration
+	ttl      time.Duration
 
 	mu       sync.RWMutex
 	cachedAt time.Time
@@ -31,7 +32,7 @@ type Service struct {
 	next atomic.Uint64
 }
 
-func NewService(source TokenSource, model, baseURL string, timeout, ttl time.Duration) (*Service, error) {
+func NewService(source TokenSource, model, baseURL string, timeout, ttl time.Duration, proxyURL string) (*Service, error) {
 	if source == nil {
 		return nil, errors.New("deepseek token source is nil")
 	}
@@ -39,11 +40,12 @@ func NewService(source TokenSource, model, baseURL string, timeout, ttl time.Dur
 		ttl = time.Minute
 	}
 	return &Service{
-		source:  source,
-		model:   strings.TrimSpace(model),
-		baseURL: strings.TrimSpace(baseURL),
-		timeout: timeout,
-		ttl:     ttl,
+		source:   source,
+		model:    strings.TrimSpace(model),
+		baseURL:  strings.TrimSpace(baseURL),
+		proxyURL: strings.TrimSpace(proxyURL),
+		timeout:  timeout,
+		ttl:      ttl,
 	}, nil
 }
 
@@ -122,7 +124,7 @@ func (s *Service) clientsFor(ctx context.Context) ([]*Client, error) {
 
 	clients := make([]*Client, 0, len(tokens))
 	for _, token := range tokens {
-		client, err := NewClient(token, s.model, s.baseURL, s.timeout)
+		client, err := NewClient(token, s.model, s.baseURL, s.timeout, s.proxyURL)
 		if err != nil {
 			return nil, err
 		}

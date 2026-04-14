@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/elum-bots/core/internal/apiflow"
 	"github.com/elum-bots/core/internal/bot"
@@ -27,6 +28,7 @@ type Adapter struct {
 	updates        chan schemes.UpdateInterface
 	webhookHandler http.HandlerFunc
 	flow           *apiflow.Dispatcher
+	httpTimeout    time.Duration
 }
 
 type recipientIDs struct {
@@ -51,6 +53,7 @@ func NewAdapter(token string, opts ...Option) (*Adapter, error) {
 		api:     api,
 		updates: make(chan schemes.UpdateInterface, 1024),
 	}
+	a.httpTimeout = 30 * time.Second
 	a.webhookHandler = api.GetHandler(a.updates)
 	for _, opt := range opts {
 		opt(a)
@@ -61,6 +64,16 @@ func NewAdapter(token string, opts ...Option) (*Adapter, error) {
 func WithAPIDispatcher(d *apiflow.Dispatcher) Option {
 	return func(a *Adapter) {
 		a.flow = d
+	}
+}
+
+func WithHTTPTimeout(timeout time.Duration) Option {
+	return func(a *Adapter) {
+		if a == nil || a.api == nil || timeout <= 0 {
+			return
+		}
+		a.api.SetHTTPTimeout(timeout)
+		a.httpTimeout = timeout
 	}
 }
 

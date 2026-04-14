@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"google.golang.org/genai"
 )
@@ -119,5 +120,30 @@ func TestShouldRetryImageOnly(t *testing.T) {
 		},
 	}) {
 		t.Fatal("did not expect image response to trigger image-only retry")
+	}
+}
+
+func TestNewGeneratorProxy(t *testing.T) {
+	g, err := NewGenerator(context.Background(), "test-key", "", time.Second, "http://127.0.0.1:8080")
+	if err != nil {
+		t.Fatalf("NewGenerator() error = %v", err)
+	}
+
+	transport, ok := g.httpClient.Transport.(*http.Transport)
+	if !ok {
+		t.Fatalf("transport type = %T, want *http.Transport", g.httpClient.Transport)
+	}
+
+	req, err := http.NewRequest(http.MethodGet, "https://example.com", nil)
+	if err != nil {
+		t.Fatalf("http.NewRequest() error = %v", err)
+	}
+
+	proxyURL, err := transport.Proxy(req)
+	if err != nil {
+		t.Fatalf("transport.Proxy() error = %v", err)
+	}
+	if proxyURL == nil || proxyURL.String() != "http://127.0.0.1:8080" {
+		t.Fatalf("proxyURL = %v, want %q", proxyURL, "http://127.0.0.1:8080")
 	}
 }
