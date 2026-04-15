@@ -132,8 +132,8 @@ func (a *Adapter) Start(ctx context.Context, dispatch bot.Dispatcher) error {
 		}
 
 		for _, u := range updates {
-			norm := normalizeUpdate(u)
-			if norm.ChatID == "" || norm.UserID == "" {
+			norm, ok := normalizeUpdate(u)
+			if !ok || norm.ChatID == "" || norm.UserID == "" {
 				continue
 			}
 			wg.Add(1)
@@ -613,12 +613,15 @@ func sanitizeHTMLText(text string) string {
 	return text
 }
 
-func normalizeUpdate(u tgUpdate) bot.Update {
+func normalizeUpdate(u tgUpdate) (bot.Update, bool) {
 	out := bot.Update{Platform: "tg", Payload: map[string]any{}, Raw: u}
 	out.Message.Kind = bot.MessageKindOther
 
 	if u.CallbackQuery != nil {
 		cq := u.CallbackQuery
+		if cq.Message == nil || !isPrivateChat(cq.Message.Chat) {
+			return bot.Update{}, false
+		}
 		out.ButtonID = cq.Data
 		if cq.From != nil {
 			out.UserID = strconv.FormatInt(cq.From.ID, 10)
@@ -627,14 +630,17 @@ func normalizeUpdate(u tgUpdate) bot.Update {
 			out.ChatID = strconv.FormatInt(cq.Message.Chat.ID, 10)
 			out.MessageID = strconv.FormatInt(cq.Message.MessageID, 10)
 		}
-		return out
+		return out, true
 	}
 
 	if u.Message == nil {
-		return out
+		return bot.Update{}, false
 	}
 
 	m := u.Message
+	if !isPrivateChat(m.Chat) {
+		return bot.Update{}, false
+	}
 	out.ChatID = strconv.FormatInt(m.Chat.ID, 10)
 	out.MessageID = strconv.FormatInt(m.MessageID, 10)
 	if m.From != nil {
@@ -644,31 +650,31 @@ func normalizeUpdate(u tgUpdate) bot.Update {
 	if m.Text != "" {
 		out.Message.Kind = bot.MessageKindText
 		out.Message.Text = m.Text
-		return out
+		return out, true
 	}
 	if len(m.Photo) > 0 {
 		p := m.Photo[len(m.Photo)-1]
 		out.Message.Kind = bot.MessageKindPhoto
 		out.Message.Text = m.Caption
 		out.Message.Attachments = []bot.Attachment{{ID: p.FileID, MIME: "image/*", Size: int64(p.FileSize)}}
-		return out
+		return out, true
 	}
 	if m.Video != nil {
 		out.Message.Kind = bot.MessageKindVideo
 		out.Message.Text = m.Caption
 		out.Message.Attachments = []bot.Attachment{{ID: m.Video.FileID, MIME: "video/*", Size: int64(m.Video.FileSize)}}
-		return out
+		return out, true
 	}
 	if m.Audio != nil {
 		out.Message.Kind = bot.MessageKindAudio
 		out.Message.Text = m.Caption
 		out.Message.Attachments = []bot.Attachment{{ID: m.Audio.FileID, MIME: "audio/*", Size: int64(m.Audio.FileSize)}}
-		return out
+		return out, true
 	}
 	if m.Voice != nil {
 		out.Message.Kind = bot.MessageKindVoice
 		out.Message.Attachments = []bot.Attachment{{ID: m.Voice.FileID, MIME: "audio/ogg", Size: int64(m.Voice.FileSize)}}
-		return out
+		return out, true
 	}
 	if m.Document != nil {
 		mime := m.Document.MimeType
@@ -679,7 +685,11 @@ func normalizeUpdate(u tgUpdate) bot.Update {
 		out.Message.Text = m.Caption
 		out.Message.Attachments = []bot.Attachment{{ID: m.Document.FileID, Name: m.Document.FileName, MIME: mime, Size: int64(m.Document.FileSize)}}
 	}
-	return out
+	return out, true
+}
+
+func isPrivateChat(chat tgChat) bool {
+	return strings.EqualFold(strings.TrimSpace(chat.Type), "private")
 }
 
 type getUpdatesRequest struct {
@@ -758,7 +768,8 @@ type tgUser struct {
 }
 
 type tgChat struct {
-	ID int64 `json:"id"`
+	ID   int64  `json:"id"`
+	Type string `json:"type,omitempty"`
 }
 
 var _ bot.Adapter = (*Adapter)(nil)

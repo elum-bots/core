@@ -81,7 +81,7 @@ func TestAdapterStartAndSend(t *testing.T) {
 		case strings.HasSuffix(r.URL.Path, "/getUpdates"):
 			c := getCalls.Add(1)
 			if c == 1 {
-				return jsonResp(`{"ok":true,"result":[{"update_id":1,"message":{"message_id":11,"from":{"id":42},"chat":{"id":100},"text":"/stats one"}},{"update_id":2,"callback_query":{"id":"x","from":{"id":42},"data":"a","message":{"message_id":12,"chat":{"id":100}}}}]}`), nil
+				return jsonResp(`{"ok":true,"result":[{"update_id":1,"message":{"message_id":11,"from":{"id":42},"chat":{"id":100,"type":"private"},"text":"/stats one"}},{"update_id":2,"callback_query":{"id":"x","from":{"id":42},"data":"a","message":{"message_id":12,"chat":{"id":100,"type":"private"}}}}]}`), nil
 			}
 			return jsonResp(`{"ok":true,"result":[]}`), nil
 		default:
@@ -162,7 +162,7 @@ func TestSendEscapesAngleArgsWhenUsingHTML(t *testing.T) {
 func TestAdapterDispatchError(t *testing.T) {
 	client := &http.Client{Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
 		if strings.HasSuffix(r.URL.Path, "/getUpdates") {
-			return jsonResp(`{"ok":true,"result":[{"update_id":1,"message":{"message_id":11,"from":{"id":42},"chat":{"id":100},"text":"x"}}]}`), nil
+			return jsonResp(`{"ok":true,"result":[{"update_id":1,"message":{"message_id":11,"from":{"id":42},"chat":{"id":100,"type":"private"},"text":"x"}}]}`), nil
 		}
 		return jsonResp(`{"ok":true,"result":[]}`), nil
 	})}
@@ -176,19 +176,55 @@ func TestAdapterDispatchError(t *testing.T) {
 }
 
 func TestNormalizeUpdateKinds(t *testing.T) {
-	u := normalizeUpdate(tgUpdate{Message: &tgMessage{MessageID: 1, Chat: tgChat{ID: 2}, From: &tgUser{ID: 3}, Photo: []tgPhoto{{FileID: "p", FileSize: 5}}, Caption: "cap"}})
+	u, ok := normalizeUpdate(tgUpdate{Message: &tgMessage{MessageID: 1, Chat: tgChat{ID: 2, Type: "private"}, From: &tgUser{ID: 3}, Photo: []tgPhoto{{FileID: "p", FileSize: 5}}, Caption: "cap"}})
+	if !ok {
+		t.Fatalf("expected private photo update to be accepted")
+	}
 	if u.Message.Kind != bot.MessageKindPhoto || len(u.Message.Attachments) != 1 {
 		t.Fatalf("photo mapping failed: %#v", u)
 	}
 
-	u = normalizeUpdate(tgUpdate{Message: &tgMessage{MessageID: 1, Chat: tgChat{ID: 2}, From: &tgUser{ID: 3}, Document: &tgDocument{FileID: "d", FileName: "f.txt", MimeType: "text/plain", FileSize: 7}}})
+	u, ok = normalizeUpdate(tgUpdate{Message: &tgMessage{MessageID: 1, Chat: tgChat{ID: 2, Type: "private"}, From: &tgUser{ID: 3}, Document: &tgDocument{FileID: "d", FileName: "f.txt", MimeType: "text/plain", FileSize: 7}}})
+	if !ok {
+		t.Fatalf("expected private document update to be accepted")
+	}
 	if u.Message.Kind != bot.MessageKindFile || u.Message.Attachments[0].Name != "f.txt" {
 		t.Fatalf("doc mapping failed: %#v", u)
 	}
 
-	u = normalizeUpdate(tgUpdate{Message: &tgMessage{MessageID: 1, Chat: tgChat{ID: 2}, From: &tgUser{ID: 3}, Voice: &tgFile{FileID: "v", FileSize: 1}}})
+	u, ok = normalizeUpdate(tgUpdate{Message: &tgMessage{MessageID: 1, Chat: tgChat{ID: 2, Type: "private"}, From: &tgUser{ID: 3}, Voice: &tgFile{FileID: "v", FileSize: 1}}})
+	if !ok {
+		t.Fatalf("expected private voice update to be accepted")
+	}
 	if u.Message.Kind != bot.MessageKindVoice {
 		t.Fatalf("voice mapping failed: %#v", u)
+	}
+}
+
+func TestNormalizeUpdateSkipsNonPrivateChats(t *testing.T) {
+	if _, ok := normalizeUpdate(tgUpdate{
+		Message: &tgMessage{
+			MessageID: 1,
+			Chat:      tgChat{ID: -100, Type: "supergroup"},
+			From:      &tgUser{ID: 3},
+			Text:      "hello",
+		},
+	}); ok {
+		t.Fatalf("expected supergroup message to be skipped")
+	}
+
+	if _, ok := normalizeUpdate(tgUpdate{
+		CallbackQuery: &tgCallbackQuery{
+			ID:   "cb",
+			From: &tgUser{ID: 3},
+			Data: "click",
+			Message: &tgMessage{
+				MessageID: 2,
+				Chat:      tgChat{ID: -100, Type: "channel"},
+			},
+		},
+	}); ok {
+		t.Fatalf("expected channel callback to be skipped")
 	}
 }
 

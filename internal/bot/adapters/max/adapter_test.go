@@ -145,3 +145,34 @@ func TestWithHTTPTimeout(t *testing.T) {
 		t.Fatalf("http timeout = %v, want %v", got, 95*time.Second)
 	}
 }
+
+func TestNormalizeUpdateSkipsNonDialogMessages(t *testing.T) {
+	if _, ok := normalizeUpdate(&schemes.MessageCreatedUpdate{
+		Message: schemes.Message{
+			Sender: schemes.User{UserId: 155232128},
+			Recipient: schemes.Recipient{
+				ChatId:   987654321,
+				ChatType: schemes.CHAT,
+			},
+			Body: schemes.MessageBody{Text: "hello"},
+		},
+	}); ok {
+		t.Fatalf("expected chat message to be skipped")
+	}
+
+	if _, ok := normalizeUpdate(&schemes.MessageCallbackUpdate{
+		Callback: schemes.Callback{
+			CallbackID: "cb-1",
+			Payload:    "action",
+			User:       schemes.User{UserId: 155232128},
+		},
+		Message: &schemes.Message{
+			Recipient: schemes.Recipient{
+				ChatId:   987654321,
+				ChatType: schemes.CHANNEL,
+			},
+		},
+	}); ok {
+		t.Fatalf("expected channel callback to be skipped")
+	}
+}

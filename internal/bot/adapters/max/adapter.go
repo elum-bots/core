@@ -362,6 +362,9 @@ func applyButtons(msg *maxbot.Message, rows []bot.ButtonRow) {
 func normalizeUpdate(raw schemes.UpdateInterface) (bot.Update, bool) {
 	switch u := raw.(type) {
 	case *schemes.MessageCreatedUpdate:
+		if !isDialogRecipient(u.Message.Recipient) {
+			return bot.Update{}, false
+		}
 		userID := strconv.FormatInt(u.GetUserID(), 10)
 		chatID := strconv.FormatInt(u.GetChatID(), 10)
 		if strings.TrimSpace(chatID) == "" || chatID == "0" {
@@ -377,6 +380,9 @@ func normalizeUpdate(raw schemes.UpdateInterface) (bot.Update, bool) {
 			Time:     u.GetUpdateTime(),
 		}, true
 	case *schemes.MessageCallbackUpdate:
+		if u.Message == nil || !isDialogRecipient(u.Message.Recipient) {
+			return bot.Update{}, false
+		}
 		userID := strconv.FormatInt(u.GetUserID(), 10)
 		chatID := userID
 		if u.Message != nil && u.Message.Recipient.ChatId != 0 {
@@ -418,6 +424,10 @@ func normalizeUpdate(raw schemes.UpdateInterface) (bot.Update, bool) {
 	default:
 		return bot.Update{}, false
 	}
+}
+
+func isDialogRecipient(recipient schemes.Recipient) bool {
+	return recipient.ChatType == schemes.DIALOG
 }
 
 func normalizeIncomingMessage(body schemes.MessageBody) bot.Message {
