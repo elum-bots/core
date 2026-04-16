@@ -32,6 +32,39 @@ func (q *Queries) ClaimMandatoryRewardProgress(ctx context.Context, arg ClaimMan
 	return result.RowsAffected()
 }
 
+const countMandatoryVerifiedUsersBetween = `-- name: CountMandatoryVerifiedUsersBetween :one
+SELECT COUNT(DISTINCT user_id) AS verified_count
+FROM user_mandatory_status
+WHERE subscribed = TRUE
+  AND updated_at >= ?
+  AND updated_at < ?
+`
+
+type CountMandatoryVerifiedUsersBetweenParams struct {
+	UpdatedAt   string `db:"updated_at" json:"updated_at"`
+	UpdatedAt_2 string `db:"updated_at_2" json:"updated_at_2"`
+}
+
+func (q *Queries) CountMandatoryVerifiedUsersBetween(ctx context.Context, arg CountMandatoryVerifiedUsersBetweenParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countMandatoryVerifiedUsersBetween, arg.UpdatedAt, arg.UpdatedAt_2)
+	var verified_count int64
+	err := row.Scan(&verified_count)
+	return verified_count, err
+}
+
+const countMandatoryVerifiedUsersTotal = `-- name: CountMandatoryVerifiedUsersTotal :one
+SELECT COUNT(DISTINCT user_id) AS verified_count
+FROM user_mandatory_status
+WHERE subscribed = TRUE
+`
+
+func (q *Queries) CountMandatoryVerifiedUsersTotal(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countMandatoryVerifiedUsersTotal)
+	var verified_count int64
+	err := row.Scan(&verified_count)
+	return verified_count, err
+}
+
 const createMandatoryChannel = `-- name: CreateMandatoryChannel :one
 INSERT INTO mandatory_channels (
   channel_id,

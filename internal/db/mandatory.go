@@ -92,6 +92,17 @@ func (r *MandatoryRepository) ResetRewardProgress(ctx context.Context, channelRo
 	return r.q.ResetMandatoryRewardProgress(ctx, channelRowID)
 }
 
+func (r *MandatoryRepository) CountVerifiedUsers(ctx context.Context) (int64, error) {
+	return r.q.CountMandatoryVerifiedUsersTotal(ctx)
+}
+
+func (r *MandatoryRepository) CountVerifiedUsersBetween(ctx context.Context, start, end string) (int64, error) {
+	return r.q.CountMandatoryVerifiedUsersBetween(ctx, sqlc.CountMandatoryVerifiedUsersBetweenParams{
+		UpdatedAt:   start,
+		UpdatedAt_2: end,
+	})
+}
+
 func mapMandatoryChannel(id int64, channelID, title, url string, requiresCheck, active bool, createdAt string) MandatoryChannel {
 	return MandatoryChannel{
 		ID:            id,

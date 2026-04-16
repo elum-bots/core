@@ -30,23 +30,28 @@ func registerMandatoryList(b *elumbot.Bot, deps Dependencies) {
 		if err != nil {
 			return err
 		}
+		verifiedCount, err := store.Mandatory.CountVerifiedUsers(ctx)
+		if err != nil {
+			return err
+		}
 		items, err := store.Mandatory.List(ctx)
 		if err != nil {
 			return err
 		}
 		if len(items) == 0 {
-			return elumbot.Reply(ctx, "Mandatory-каналы не настроены")
+			return elumbot.Reply(ctx, fmt.Sprintf("Обязательные каналы не найдены.\n\nПрошли проверку обязательной подписки: %d", verifiedCount))
 		}
 		lines := make([]string, 0, len(items)+1)
-		lines = append(lines, "Mandatory каналы:")
+		lines = append(lines, "Обязательные каналы:")
+		lines = append(lines, fmt.Sprintf("Прошли проверку обязательной подписки: %d", verifiedCount))
 		for _, item := range items {
 			check := "1"
 			if !item.RequiresCheck {
 				check = "0"
 			}
-			lines = append(lines, fmt.Sprintf("%d) %s (%s) | проверка=%s\n%s", item.ID, item.Title, item.ChannelID, check, item.URL))
+			lines = append(lines, fmt.Sprintf("%d) %s (%s) | проверка=%s", item.ID, item.Title, item.ChannelID, check))
 		}
-		return elumbot.Reply(ctx, strings.Join(lines, "\n\n"))
+		return elumbot.Reply(ctx, strings.Join(lines, "\n"))
 	})
 }
 

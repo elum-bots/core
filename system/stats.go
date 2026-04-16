@@ -23,6 +23,6 @@ func registerStats(b *elumbot.Bot, deps Dependencies) {
 		if err != nil {
 			return err
 		}
-		return elumbot.Reply(ctx, statsText(stats))
+		return elumbot.Reply(ctx, statsText(stats, deps))
 	})
 }

@@ -13,6 +13,8 @@ type Querier interface {
 	ClaimMandatoryRewardProgress(ctx context.Context, arg ClaimMandatoryRewardProgressParams) (int64, error)
 	CountBroadcastStatsActive(ctx context.Context) (int64, error)
 	CountBroadcastStatsTotal(ctx context.Context) (int64, error)
+	CountMandatoryVerifiedUsersBetween(ctx context.Context, arg CountMandatoryVerifiedUsersBetweenParams) (int64, error)
+	CountMandatoryVerifiedUsersTotal(ctx context.Context) (int64, error)
 	CountMetricEventsBetween(ctx context.Context, arg CountMetricEventsBetweenParams) (int64, error)
 	CountMetricEventsTotal(ctx context.Context, kind string) (int64, error)
 	CountReferredUsersBetween(ctx context.Context, arg CountReferredUsersBetweenParams) (int64, error)

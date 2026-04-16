@@ -18,6 +18,7 @@ type TokenSource interface {
 
 type Service struct {
 	source   TokenSource
+	metrics  *db.MetricsRepository
 	model    string
 	proxyURL string
 	timeout  time.Duration
@@ -28,7 +29,7 @@ type Service struct {
 	generator *Generator
 }
 
-func NewService(ctx context.Context, source TokenSource, model string, timeout, ttl time.Duration, proxyURL string) (*Service, error) {
+func NewService(ctx context.Context, source TokenSource, metrics *db.MetricsRepository, model string, timeout, ttl time.Duration, proxyURL string) (*Service, error) {
 	if source == nil {
 		return nil, errors.New("gemini token source is nil")
 	}
@@ -37,6 +38,7 @@ func NewService(ctx context.Context, source TokenSource, model string, timeout, 
 	}
 	return &Service{
 		source:   source,
+		metrics:  metrics,
 		model:    strings.TrimSpace(model),
 		proxyURL: strings.TrimSpace(proxyURL),
 		timeout:  timeout,
@@ -59,7 +61,14 @@ func (s *Service) GenerateImage(ctx context.Context, photo []byte, mimeType stri
 	if err != nil {
 		return nil, err
 	}
-	return generator.GenerateImage(ctx, photo, mimeType, prompt)
+	image, err := generator.GenerateImage(ctx, photo, mimeType, prompt)
+	if err != nil {
+		return nil, err
+	}
+	if s.metrics != nil {
+		_ = s.metrics.Record(ctx, db.MetricGeminiGeneration, "", 0, 1)
+	}
+	return image, nil
 }
 
 func (s *Service) generatorFor(ctx context.Context) (*Generator, error) {

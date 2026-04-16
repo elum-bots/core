@@ -131,6 +131,9 @@ type BotStats struct {
 	RefTotal                 int64
 	RefToday                 int64
 	RefYesterday             int64
+	MandatoryTotal           int64
+	MandatoryToday           int64
+	MandatoryYesterday       int64
 	PostSentTotal            int64
 	PostSentToday            int64
 	PostSentYesterday        int64
@@ -139,6 +142,12 @@ type BotStats struct {
 	MandatoryRewardTotal     int64
 	MandatoryRewardToday     int64
 	MandatoryRewardYesterday int64
+	GeminiTotal              int64
+	GeminiToday              int64
+	GeminiYesterday          int64
+	DeepSeekTotal            int64
+	DeepSeekToday            int64
+	DeepSeekYesterday        int64
 	TrackVisitsTotal         int64
 	TrackVisitsToday         int64
 	TrackVisitsYesterday     int64

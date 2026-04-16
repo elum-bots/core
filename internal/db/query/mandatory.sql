@@ -65,3 +65,15 @@ WHERE channel_row_id = ?
 -- name: ResetMandatoryRewardProgress :exec
 DELETE FROM mandatory_reward_progress
 WHERE channel_row_id = ?;
+
+-- name: CountMandatoryVerifiedUsersTotal :one
+SELECT COUNT(DISTINCT user_id) AS verified_count
+FROM user_mandatory_status
+WHERE subscribed = TRUE;
+
+-- name: CountMandatoryVerifiedUsersBetween :one
+SELECT COUNT(DISTINCT user_id) AS verified_count
+FROM user_mandatory_status
+WHERE subscribed = TRUE
+  AND updated_at >= ?
+  AND updated_at < ?;

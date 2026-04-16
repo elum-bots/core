@@ -18,6 +18,7 @@ func newIntegrationServices(ctx context.Context, cfg Config, store *db.Store) (*
 	if cfg.FeatureDeepSeek && store != nil {
 		client, err := deepseekintegration.NewService(
 			store.IntegrationTokens,
+			store.Metrics,
 			cfg.DeepSeekModel,
 			cfg.DeepSeekBaseURL,
 			time.Duration(cfg.DeepSeekTimeoutSec)*time.Second,
@@ -34,6 +35,7 @@ func newIntegrationServices(ctx context.Context, cfg Config, store *db.Store) (*
 		generator, err := geminiintegration.NewService(
 			ctx,
 			store.IntegrationTokens,
+			store.Metrics,
 			cfg.GeminiModel,
 			time.Duration(cfg.GeminiTimeoutSec)*time.Second,
 			time.Minute,

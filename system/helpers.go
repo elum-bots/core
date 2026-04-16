@@ -675,23 +675,28 @@ func sqlNotFound(err error) bool {
 	return errors.Is(err, sql.ErrNoRows)
 }
 
-func statsText(s db.BotStats) string {
-	return fmt.Sprintf(
-		"Статистика бота:\n\n"+
-			"Уникальные:\n- Всего: %d\n- Сегодня: %d\n- Вчера: %d\n\n"+
-			"Новые:\n- Сегодня: %d\n- Вчера: %d\n\n"+
-			"Рефералы:\n- Всего: %d\n- Сегодня: %d\n- Вчера: %d\n\n"+
-			"Track:\n- Переходов всего: %d\n- Сегодня: %d\n- Вчера: %d\n\n"+
-			"Баланс:\n- Начислений всего: %d\n- Сегодня: %d\n- Вчера: %d\n\n"+
-			"Рассылки:\n- Отправлено всего: %d\n- Отправлено сегодня: %d\n- Отправлено вчера: %d\n- Ошибок сегодня: %d\n- Ошибок вчера: %d\n- Всего запусков: %d\n- Активных сейчас: %d",
-		s.UniqueTotal, s.UniqueToday, s.UniqueYesterday,
-		s.NewUsersToday, s.NewUsersYesterday,
-		s.RefTotal, s.RefToday, s.RefYesterday,
-		s.TrackVisitsTotal, s.TrackVisitsToday, s.TrackVisitsYesterday,
-		s.BalanceAddedTotal, s.BalanceAddedToday, s.BalanceAddedYesterday,
-		s.PostSentTotal, s.PostSentToday, s.PostSentYesterday, s.PostFailedToday, s.PostFailedYesterday,
-		s.BroadcastsTotal, s.BroadcastsActive,
+func statsText(s db.BotStats, deps Dependencies) string {
+	sections := []string{
+		fmt.Sprintf("Уникальные:\n- Всего: %d\n- Сегодня: %d\n- Вчера: %d", s.UniqueTotal, s.UniqueToday, s.UniqueYesterday),
+		fmt.Sprintf("Новые:\n- Сегодня: %d\n- Вчера: %d", s.NewUsersToday, s.NewUsersYesterday),
+		fmt.Sprintf("Рефералы:\n- Всего: %d\n- Сегодня: %d\n- Вчера: %d", s.RefTotal, s.RefToday, s.RefYesterday),
+		fmt.Sprintf("Mandatory:\n- Всего: %d\n- Сегодня: %d\n- Вчера: %d", s.MandatoryTotal, s.MandatoryToday, s.MandatoryYesterday),
+	}
+	if geminiFeatureEnabled(deps) {
+		sections = append(sections, fmt.Sprintf("Gemini:\n- Генераций всего: %d\n- Сегодня: %d\n- Вчера: %d", s.GeminiTotal, s.GeminiToday, s.GeminiYesterday))
+	}
+	if deepSeekFeatureEnabled(deps) {
+		sections = append(sections, fmt.Sprintf("DeepSeek:\n- Генераций всего: %d\n- Сегодня: %d\n- Вчера: %d", s.DeepSeekTotal, s.DeepSeekToday, s.DeepSeekYesterday))
+	}
+	sections = append(sections,
+		fmt.Sprintf("Track:\n- Переходов всего: %d\n- Сегодня: %d\n- Вчера: %d", s.TrackVisitsTotal, s.TrackVisitsToday, s.TrackVisitsYesterday),
+		fmt.Sprintf("Баланс:\n- Начислений всего: %d\n- Сегодня: %d\n- Вчера: %d", s.BalanceAddedTotal, s.BalanceAddedToday, s.BalanceAddedYesterday),
+		fmt.Sprintf("Рассылки:\n- Отправлено всего: %d\n- Отправлено сегодня: %d\n- Отправлено вчера: %d\n- Ошибок сегодня: %d\n- Ошибок вчера: %d\n- Всего запусков: %d\n- Активных сейчас: %d",
+			s.PostSentTotal, s.PostSentToday, s.PostSentYesterday, s.PostFailedToday, s.PostFailedYesterday,
+			s.BroadcastsTotal, s.BroadcastsActive,
+		),
 	)
+	return "Статистика бота:\n\n" + strings.Join(sections, "\n\n")
 }
 
 func broadcastStatText(item db.BroadcastStat) string {

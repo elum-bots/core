@@ -19,6 +19,7 @@ type TokenSource interface {
 
 type Service struct {
 	source   TokenSource
+	metrics  *db.MetricsRepository
 	model    string
 	baseURL  string
 	proxyURL string
@@ -32,7 +33,7 @@ type Service struct {
 	next atomic.Uint64
 }
 
-func NewService(source TokenSource, model, baseURL string, timeout, ttl time.Duration, proxyURL string) (*Service, error) {
+func NewService(source TokenSource, metrics *db.MetricsRepository, model, baseURL string, timeout, ttl time.Duration, proxyURL string) (*Service, error) {
 	if source == nil {
 		return nil, errors.New("deepseek token source is nil")
 	}
@@ -41,6 +42,7 @@ func NewService(source TokenSource, model, baseURL string, timeout, ttl time.Dur
 	}
 	return &Service{
 		source:   source,
+		metrics:  metrics,
 		model:    strings.TrimSpace(model),
 		baseURL:  strings.TrimSpace(baseURL),
 		proxyURL: strings.TrimSpace(proxyURL),
@@ -78,6 +80,9 @@ func (s *Service) ChatCompletion(ctx context.Context, messages []Message, temper
 		client := clients[(start+i)%len(clients)]
 		out, callErr := client.ChatCompletion(ctx, messages, temperature)
 		if callErr == nil {
+			if s.metrics != nil {
+				_ = s.metrics.Record(ctx, db.MetricDeepSeekGeneration, "", 0, 1)
+			}
 			return out, nil
 		}
 		if errors.Is(callErr, ErrRateLimited) {

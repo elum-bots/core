@@ -14,6 +14,8 @@ const (
 	MetricMandatoryRewardGranted = "mandatory_reward_granted"
 	MetricBalanceAdded           = "balance_added"
 	MetricTaskRewardGranted      = "task_reward_granted"
+	MetricGeminiGeneration       = "gemini_generation"
+	MetricDeepSeekGeneration     = "deepseek_generation"
 )
 
 type StatsRepository struct {
@@ -59,6 +61,15 @@ func (r *StatsRepository) GetBotStats(ctx context.Context) (BotStats, error) {
 	if out.RefYesterday, err = r.q.CountReferredUsersBetween(ctx, sqlc.CountReferredUsersBetweenParams{CreatedAt: yesterdayStart, CreatedAt_2: yesterdayEnd}); err != nil {
 		return BotStats{}, err
 	}
+	if out.MandatoryTotal, err = r.q.CountMandatoryVerifiedUsersTotal(ctx); err != nil {
+		return BotStats{}, err
+	}
+	if out.MandatoryToday, err = r.q.CountMandatoryVerifiedUsersBetween(ctx, sqlc.CountMandatoryVerifiedUsersBetweenParams{UpdatedAt: todayStart, UpdatedAt_2: todayEnd}); err != nil {
+		return BotStats{}, err
+	}
+	if out.MandatoryYesterday, err = r.q.CountMandatoryVerifiedUsersBetween(ctx, sqlc.CountMandatoryVerifiedUsersBetweenParams{UpdatedAt: yesterdayStart, UpdatedAt_2: yesterdayEnd}); err != nil {
+		return BotStats{}, err
+	}
 	if out.PostSentTotal, err = r.q.CountMetricEventsTotal(ctx, MetricPostSent); err != nil {
 		return BotStats{}, err
 	}
@@ -81,6 +92,24 @@ func (r *StatsRepository) GetBotStats(ctx context.Context) (BotStats, error) {
 		return BotStats{}, err
 	}
 	if out.MandatoryRewardYesterday, err = r.q.CountMetricEventsBetween(ctx, sqlc.CountMetricEventsBetweenParams{Kind: MetricMandatoryRewardGranted, CreatedAt: yesterdayStart, CreatedAt_2: yesterdayEnd}); err != nil {
+		return BotStats{}, err
+	}
+	if out.GeminiTotal, err = r.q.CountMetricEventsTotal(ctx, MetricGeminiGeneration); err != nil {
+		return BotStats{}, err
+	}
+	if out.GeminiToday, err = r.q.CountMetricEventsBetween(ctx, sqlc.CountMetricEventsBetweenParams{Kind: MetricGeminiGeneration, CreatedAt: todayStart, CreatedAt_2: todayEnd}); err != nil {
+		return BotStats{}, err
+	}
+	if out.GeminiYesterday, err = r.q.CountMetricEventsBetween(ctx, sqlc.CountMetricEventsBetweenParams{Kind: MetricGeminiGeneration, CreatedAt: yesterdayStart, CreatedAt_2: yesterdayEnd}); err != nil {
+		return BotStats{}, err
+	}
+	if out.DeepSeekTotal, err = r.q.CountMetricEventsTotal(ctx, MetricDeepSeekGeneration); err != nil {
+		return BotStats{}, err
+	}
+	if out.DeepSeekToday, err = r.q.CountMetricEventsBetween(ctx, sqlc.CountMetricEventsBetweenParams{Kind: MetricDeepSeekGeneration, CreatedAt: todayStart, CreatedAt_2: todayEnd}); err != nil {
+		return BotStats{}, err
+	}
+	if out.DeepSeekYesterday, err = r.q.CountMetricEventsBetween(ctx, sqlc.CountMetricEventsBetweenParams{Kind: MetricDeepSeekGeneration, CreatedAt: yesterdayStart, CreatedAt_2: yesterdayEnd}); err != nil {
 		return BotStats{}, err
 	}
 	if out.TrackVisitsTotal, err = r.q.CountTrackVisitsTotal(ctx); err != nil {
