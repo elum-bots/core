@@ -1,6 +1,7 @@
 package integration
 
 import (
+	aiminiintegration "github.com/elum-bots/core/internal/integration/aimini"
 	deepseekintegration "github.com/elum-bots/core/internal/integration/deepseek"
 	geminiintegration "github.com/elum-bots/core/internal/integration/gemini"
 	maxintegration "github.com/elum-bots/core/internal/integration/max"
@@ -8,6 +9,7 @@ import (
 )
 
 type Services struct {
+	Aimini   *aiminiintegration.Service
 	DeepSeek *deepseekintegration.Service
 	Gemini   *geminiintegration.Service
 	TG       *tgintegration.Client

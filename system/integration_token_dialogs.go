@@ -9,8 +9,18 @@ import (
 )
 
 func registerIntegrationTokenDialogs(b *elumbot.Bot, deps Dependencies) {
+	registerAiminiTokenDialogs(b, deps)
 	registerDeepSeekTokenDialogs(b, deps)
 	registerGeminiTokenDialogs(b, deps)
+}
+
+func registerAiminiTokenDialogs(b *elumbot.Bot, deps Dependencies) {
+	b.Dialog(dialogAiminiTokenAdd, func() *elumbot.Dialog {
+		return integrationTokenAddDialog(deps, db.IntegrationProviderAimini, "Aimini")
+	})
+	b.Dialog(dialogAiminiTokenEdit, func() *elumbot.Dialog {
+		return integrationTokenEditDialog(deps, db.IntegrationProviderAimini, "Aimini")
+	})
 }
 
 func registerDeepSeekTokenDialogs(b *elumbot.Bot, deps Dependencies) {

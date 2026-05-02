@@ -4,6 +4,7 @@ go 1.25.4
 
 require (
 	github.com/caarlos0/env/v6 v6.10.1
+	github.com/elum-utils/aimini v0.0.1
 	github.com/elum-utils/env v1.0.2
 	github.com/golang/mock v1.6.0
 	github.com/mattn/go-sqlite3 v1.14.40

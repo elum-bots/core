@@ -110,6 +110,7 @@ type PaymentTransaction struct {
 const (
 	IntegrationProviderDeepSeek = "deepseek"
 	IntegrationProviderGemini   = "gemini"
+	IntegrationProviderAimini   = "aimini"
 )
 
 type IntegrationToken struct {
@@ -145,6 +146,9 @@ type BotStats struct {
 	GeminiTotal              int64
 	GeminiToday              int64
 	GeminiYesterday          int64
+	AiminiTotal              int64
+	AiminiToday              int64
+	AiminiYesterday          int64
 	DeepSeekTotal            int64
 	DeepSeekToday            int64
 	DeepSeekYesterday        int64

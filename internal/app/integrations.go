@@ -6,6 +6,7 @@ import (
 
 	"github.com/elum-bots/core/internal/db"
 	integration "github.com/elum-bots/core/internal/integration"
+	aiminiintegration "github.com/elum-bots/core/internal/integration/aimini"
 	deepseekintegration "github.com/elum-bots/core/internal/integration/deepseek"
 	geminiintegration "github.com/elum-bots/core/internal/integration/gemini"
 	maxintegration "github.com/elum-bots/core/internal/integration/max"
@@ -14,6 +15,23 @@ import (
 
 func newIntegrationServices(ctx context.Context, cfg Config, store *db.Store) (*integration.Services, error) {
 	services := &integration.Services{}
+
+	if cfg.FeatureAimini && store != nil {
+		generator, err := aiminiintegration.NewService(
+			store.IntegrationTokens,
+			store.Metrics,
+			cfg.AiminiBaseURL,
+			cfg.AiminiNodeID,
+			time.Duration(cfg.AiminiTimeoutSec)*time.Second,
+			time.Duration(cfg.AiminiPollIntervalSec)*time.Second,
+			time.Minute,
+			cfg.AiminiProxyURL,
+		)
+		if err != nil {
+			return nil, err
+		}
+		services.Aimini = generator
+	}
 
 	if cfg.FeatureDeepSeek && store != nil {
 		client, err := deepseekintegration.NewService(

@@ -37,7 +37,7 @@
 - досрочная остановка активной рассылки через `/broadcast_stop <id>`
 - tasks с каналами и наградами
 - payments и Platega callback
-- integrations: DeepSeek, Gemini, TG, MAX
+- integrations: Aimini, DeepSeek, Gemini, TG, MAX
 - TG helpers: `getFile`, `getChatMember`, download by `file_id`
 
 ## DeepSeek
@@ -56,6 +56,18 @@ Gemini включается не токеном из `env`, а feature-флаг�
 
 - `FEATURE_GEMINI=true`
 - `GEMINI_PROXY_URL=http://host:port` при необходимости отдельного proxy только для Gemini
+
+После включения токены добавляются уже из самого бота через админские команды.
+Токены хранятся в SQLite и кешируются на 1 минуту.
+
+## Aimini
+
+Aimini включается не токеном из `env`, а feature-флагом:
+
+- `FEATURE_AIMINI=true`
+- `AIMINI_BASE_URL=https://...`
+- `AIMINI_NODE_ID=...`
+- `AIMINI_PROXY_URL=http://host:port` при необходимости отдельного proxy только для Aimini
 
 После включения токены добавляются уже из самого бота через админские команды.
 Токены хранятся в SQLite и кешируются на 1 минуту.
@@ -142,12 +154,14 @@ Core читает env только через `github.com/elum-utils/env`.
 - `MAX`
 - `DeepSeek`
 - `Gemini`
+- `Aimini`
 - `Payments`
 
 Отдельные proxy задаются только для AI-интеграций и не влияют на Telegram, MAX или Payments:
 
 - `DEEPSEEK_PROXY_URL`
 - `GEMINI_PROXY_URL`
+- `AIMINI_PROXY_URL`
 
 Для MAX дополнительно можно управлять общим HTTP timeout:
 

@@ -15,6 +15,7 @@ const (
 	MetricBalanceAdded           = "balance_added"
 	MetricTaskRewardGranted      = "task_reward_granted"
 	MetricGeminiGeneration       = "gemini_generation"
+	MetricAiminiGeneration       = "aimini_generation"
 	MetricDeepSeekGeneration     = "deepseek_generation"
 )
 
@@ -101,6 +102,15 @@ func (r *StatsRepository) GetBotStats(ctx context.Context) (BotStats, error) {
 		return BotStats{}, err
 	}
 	if out.GeminiYesterday, err = r.q.CountMetricEventsBetween(ctx, sqlc.CountMetricEventsBetweenParams{Kind: MetricGeminiGeneration, CreatedAt: yesterdayStart, CreatedAt_2: yesterdayEnd}); err != nil {
+		return BotStats{}, err
+	}
+	if out.AiminiTotal, err = r.q.CountMetricEventsTotal(ctx, MetricAiminiGeneration); err != nil {
+		return BotStats{}, err
+	}
+	if out.AiminiToday, err = r.q.CountMetricEventsBetween(ctx, sqlc.CountMetricEventsBetweenParams{Kind: MetricAiminiGeneration, CreatedAt: todayStart, CreatedAt_2: todayEnd}); err != nil {
+		return BotStats{}, err
+	}
+	if out.AiminiYesterday, err = r.q.CountMetricEventsBetween(ctx, sqlc.CountMetricEventsBetweenParams{Kind: MetricAiminiGeneration, CreatedAt: yesterdayStart, CreatedAt_2: yesterdayEnd}); err != nil {
 		return BotStats{}, err
 	}
 	if out.DeepSeekTotal, err = r.q.CountMetricEventsTotal(ctx, MetricDeepSeekGeneration); err != nil {

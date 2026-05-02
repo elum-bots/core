@@ -10,8 +10,37 @@ import (
 )
 
 func registerIntegrationTokenCommands(b *elumbot.Bot, deps Dependencies) {
+	registerAiminiTokenCommands(b, deps)
 	registerDeepSeekTokenCommands(b, deps)
 	registerGeminiTokenCommands(b, deps)
+}
+
+func registerAiminiTokenCommands(b *elumbot.Bot, deps Dependencies) {
+	b.Event("aimini_token_add", func(ctx context.Context, _ ...string) error {
+		upd, err := currentUpdate(ctx)
+		if err != nil {
+			return elumbot.Reply(ctx, "context error")
+		}
+		if !isAdmin(upd) {
+			return startAdminOnly(ctx)
+		}
+		if !aiminiFeatureEnabled(deps) {
+			return startFeatureDisabled(ctx)
+		}
+		return b.StartDialog(ctx, dialogAiminiTokenAdd, nil)
+	})
+
+	b.Event("aimini_token_list", func(ctx context.Context, _ ...string) error {
+		return listIntegrationTokens(ctx, b, deps, db.IntegrationProviderAimini, "Aimini")
+	})
+
+	b.Event("aimini_token_edit", func(ctx context.Context, args ...string) error {
+		return startIntegrationTokenEditDialog(ctx, b, deps, db.IntegrationProviderAimini, dialogAiminiTokenEdit, args)
+	})
+
+	b.Event("aimini_token_del", func(ctx context.Context, args ...string) error {
+		return deleteIntegrationToken(ctx, deps, db.IntegrationProviderAimini, args, "Aimini")
+	})
 }
 
 func registerDeepSeekTokenCommands(b *elumbot.Bot, deps Dependencies) {
@@ -166,6 +195,8 @@ func listIntegrationTokens(ctx context.Context, b *elumbot.Bot, deps Dependencie
 
 func integrationFeatureEnabled(deps Dependencies, provider string) bool {
 	switch provider {
+	case db.IntegrationProviderAimini:
+		return aiminiFeatureEnabled(deps)
 	case db.IntegrationProviderDeepSeek:
 		return deepSeekFeatureEnabled(deps)
 	case db.IntegrationProviderGemini:
@@ -180,6 +211,10 @@ func invalidateIntegrationCache(deps Dependencies, provider string) {
 		return
 	}
 	switch provider {
+	case db.IntegrationProviderAimini:
+		if deps.Integrations.Aimini != nil {
+			deps.Integrations.Aimini.Invalidate()
+		}
 	case db.IntegrationProviderDeepSeek:
 		if deps.Integrations.DeepSeek != nil {
 			deps.Integrations.DeepSeek.Invalidate()

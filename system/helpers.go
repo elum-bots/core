@@ -28,6 +28,8 @@ const (
 	dialogDeepSeekTokenEdit     = "system.deepseek_token_edit"
 	dialogGeminiTokenAdd        = "system.gemini_token_add"
 	dialogGeminiTokenEdit       = "system.gemini_token_edit"
+	dialogAiminiTokenAdd        = "system.aimini_token_add"
+	dialogAiminiTokenEdit       = "system.aimini_token_edit"
 )
 
 const (
@@ -168,6 +170,16 @@ func helpText(includeAdmin bool, deps Dependencies) string {
 			"/gemini_token_list - список токенов.",
 			"/gemini_token_edit <id> - обновить токен.",
 			"/gemini_token_del <id> - удалить токен.",
+		)
+	}
+	if aiminiFeatureEnabled(deps) {
+		adminParts = append(adminParts,
+			"",
+			"Aimini токены:",
+			"/aimini_token_add - добавить токен.",
+			"/aimini_token_list - список токенов.",
+			"/aimini_token_edit <id> - обновить токен.",
+			"/aimini_token_del <id> - удалить токен.",
 		)
 	}
 	admin := strings.TrimSpace(strings.Join(adminParts, "\n"))
@@ -685,6 +697,9 @@ func statsText(s db.BotStats, deps Dependencies) string {
 	if geminiFeatureEnabled(deps) {
 		sections = append(sections, fmt.Sprintf("Gemini:\n- Генераций всего: %d\n- Сегодня: %d\n- Вчера: %d", s.GeminiTotal, s.GeminiToday, s.GeminiYesterday))
 	}
+	if aiminiFeatureEnabled(deps) {
+		sections = append(sections, fmt.Sprintf("Aimini:\n- Генераций всего: %d\n- Сегодня: %d\n- Вчера: %d", s.AiminiTotal, s.AiminiToday, s.AiminiYesterday))
+	}
 	if deepSeekFeatureEnabled(deps) {
 		sections = append(sections, fmt.Sprintf("DeepSeek:\n- Генераций всего: %d\n- Сегодня: %d\n- Вчера: %d", s.DeepSeekTotal, s.DeepSeekToday, s.DeepSeekYesterday))
 	}
@@ -724,6 +739,10 @@ func deepSeekFeatureEnabled(deps Dependencies) bool {
 
 func geminiFeatureEnabled(deps Dependencies) bool {
 	return deps.Integrations != nil && deps.Integrations.Gemini != nil
+}
+
+func aiminiFeatureEnabled(deps Dependencies) bool {
+	return deps.Integrations != nil && deps.Integrations.Aimini != nil
 }
 
 func maskToken(raw string) string {
