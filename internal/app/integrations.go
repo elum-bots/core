@@ -23,7 +23,6 @@ func newIntegrationServices(ctx context.Context, cfg Config, store *db.Store) (*
 			cfg.AiminiBaseURL,
 			cfg.AiminiNodeID,
 			time.Duration(cfg.AiminiTimeoutSec)*time.Second,
-			time.Duration(cfg.AiminiPollIntervalSec)*time.Second,
 			time.Minute,
 			cfg.AiminiProxyURL,
 		)

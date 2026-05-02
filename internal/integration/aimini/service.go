@@ -22,13 +22,11 @@ type TokenSource interface {
 }
 
 type Service struct {
-	source       TokenSource
-	metrics      *db.MetricsRepository
-	baseURL      string
-	nodeID       string
-	timeout      time.Duration
-	pollInterval time.Duration
-	ttl          time.Duration
+	source  TokenSource
+	metrics *db.MetricsRepository
+	baseURL string
+	nodeID  string
+	ttl     time.Duration
 
 	mu       sync.RWMutex
 	cachedAt time.Time
@@ -36,7 +34,15 @@ type Service struct {
 	http     *http.Client
 }
 
-func NewService(source TokenSource, metrics *db.MetricsRepository, baseURL, nodeID string, timeout, pollInterval, ttl time.Duration, proxyURL string) (*Service, error) {
+type QueuedImage struct {
+	ID        string
+	UserID    string
+	NodeID    string
+	OutputURL string
+	Status    string
+}
+
+func NewService(source TokenSource, metrics *db.MetricsRepository, baseURL, nodeID string, timeout, ttl time.Duration, proxyURL string) (*Service, error) {
 	if source == nil {
 		return nil, errors.New("aimini token source is nil")
 	}
@@ -51,9 +57,6 @@ func NewService(source TokenSource, metrics *db.MetricsRepository, baseURL, node
 	if timeout <= 0 {
 		timeout = 3 * time.Minute
 	}
-	if pollInterval <= 0 {
-		pollInterval = 5 * time.Second
-	}
 	if ttl <= 0 {
 		ttl = time.Minute
 	}
@@ -62,14 +65,12 @@ func NewService(source TokenSource, metrics *db.MetricsRepository, baseURL, node
 		return nil, err
 	}
 	return &Service{
-		source:       source,
-		metrics:      metrics,
-		baseURL:      baseURL,
-		nodeID:       nodeID,
-		timeout:      timeout,
-		pollInterval: pollInterval,
-		ttl:          ttl,
-		http:         httpClient,
+		source:  source,
+		metrics: metrics,
+		baseURL: baseURL,
+		nodeID:  nodeID,
+		ttl:     ttl,
+		http:    httpClient,
 	}, nil
 }
 
@@ -83,20 +84,20 @@ func (s *Service) Invalidate() {
 	s.client = nil
 }
 
-func (s *Service) GenerateImageForUser(ctx context.Context, userID string, photo []byte, mimeType string, prompt string) ([]byte, error) {
+func (s *Service) QueueImageForUser(ctx context.Context, userID string, photo []byte, mimeType string, prompt string) (string, error) {
 	if s == nil {
-		return nil, errors.New("aimini service is nil")
+		return "", errors.New("aimini service is nil")
 	}
 	if len(photo) == 0 {
-		return nil, errors.New("photo is empty")
+		return "", errors.New("photo is empty")
 	}
 	userID = strings.TrimSpace(userID)
 	if userID == "" {
-		return nil, errors.New("aimini user id is empty")
+		return "", errors.New("aimini user id is empty")
 	}
 	prompt = strings.TrimSpace(prompt)
 	if prompt == "" {
-		return nil, errors.New("prompt is empty")
+		return "", errors.New("prompt is empty")
 	}
 	if strings.TrimSpace(mimeType) == "" {
 		mimeType = "image/jpeg"
@@ -104,43 +105,79 @@ func (s *Service) GenerateImageForUser(ctx context.Context, userID string, photo
 
 	client, err := s.clientFor(ctx)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	generationCtx, cancel := context.WithTimeout(ctx, s.timeout)
-	defer cancel()
+	item, err := client.Queue.Add(ctx, &aimini.AddQueueItemRequest{
+		Image:   aimini.ImageFromBytes(photo, imageFilename(mimeType), mimeType),
+		UserID:  userID,
+		NodeID:  s.nodeID,
+		Prompts: []string{prompt},
+	})
+	if err != nil {
+		return "", err
+	}
+	if item == nil || strings.TrimSpace(item.ID) == "" {
+		return "", errors.New("aimini returned empty queue item id")
+	}
+	return item.ID, nil
+}
 
-	resp, err := client.Models.GenerateContent(
-		generationCtx,
-		"",
-		[]*aimini.Content{aimini.NewContent(
-			aimini.Image(aimini.ImageFromBytes(photo, imageFilename(mimeType), mimeType)),
-			aimini.Text(prompt),
-		)},
-		&aimini.GenerateContentConfig{
-			UserID:       userID,
-			NodeID:       s.nodeID,
-			PollInterval: s.pollInterval,
-		},
-	)
+func (s *Service) ListProcessedImages(ctx context.Context, limit int) ([]QueuedImage, error) {
+	if s == nil {
+		return nil, errors.New("aimini service is nil")
+	}
+	client, err := s.clientFor(ctx)
 	if err != nil {
 		return nil, err
 	}
-	outputURL := ""
-	if resp != nil {
-		outputURL = strings.TrimSpace(resp.OutputURL)
-	}
-	if outputURL == "" {
-		return nil, errors.New("aimini returned empty output url")
-	}
-	image, err := s.downloadImage(generationCtx, outputURL)
+
+	items, err := client.Queue.List(ctx, &aimini.ListQueueItemsRequest{
+		NodeID: s.nodeID,
+		Status: aimini.StatusProcessed,
+		Limit:  limit,
+	})
 	if err != nil {
 		return nil, err
 	}
-	if s.metrics != nil {
+	out := make([]QueuedImage, 0, len(items))
+	for _, item := range items {
+		if item == nil {
+			continue
+		}
+		out = append(out, QueuedImage{
+			ID:        item.ID,
+			UserID:    item.UserID,
+			NodeID:    item.NodeID,
+			OutputURL: item.OutputS3URL,
+			Status:    item.Status,
+		})
+	}
+	return out, nil
+}
+
+func (s *Service) DownloadImage(ctx context.Context, outputURL string) ([]byte, error) {
+	if s == nil {
+		return nil, errors.New("aimini service is nil")
+	}
+	return s.downloadImage(ctx, outputURL)
+}
+
+func (s *Service) DeleteQueueItem(ctx context.Context, id string) error {
+	if s == nil {
+		return errors.New("aimini service is nil")
+	}
+	client, err := s.clientFor(ctx)
+	if err != nil {
+		return err
+	}
+	return client.Queue.Delete(ctx, &aimini.DeleteQueueItemRequest{ID: id})
+}
+
+func (s *Service) RecordGeneration(ctx context.Context) {
+	if s != nil && s.metrics != nil {
 		_ = s.metrics.Record(ctx, db.MetricAiminiGeneration, "", 0, 1)
 	}
-	return image, nil
 }
 
 func (s *Service) clientFor(ctx context.Context) (*aimini.Client, error) {
@@ -170,11 +207,10 @@ func (s *Service) clientFor(ctx context.Context) (*aimini.Client, error) {
 	}
 
 	client, err := aimini.NewClient(ctx, &aimini.ClientConfig{
-		BaseURL:      s.baseURL,
-		Token:        strings.TrimSpace(tokens[0]),
-		NodeID:       s.nodeID,
-		HTTPClient:   s.http,
-		PollInterval: s.pollInterval,
+		BaseURL:    s.baseURL,
+		Token:      strings.TrimSpace(tokens[0]),
+		NodeID:     s.nodeID,
+		HTTPClient: s.http,
 	})
 	if err != nil {
 		return nil, err
@@ -185,6 +221,10 @@ func (s *Service) clientFor(ctx context.Context) (*aimini.Client, error) {
 }
 
 func (s *Service) downloadImage(ctx context.Context, rawURL string) ([]byte, error) {
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return nil, errors.New("aimini output url is empty")
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return nil, err
