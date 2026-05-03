@@ -63,18 +63,24 @@ func TestQueueImageForUserAddsQueueItem(t *testing.T) {
 			t.Fatalf("image = %q", raw)
 		}
 		w.WriteHeader(http.StatusCreated)
-		_, _ = w.Write([]byte(`{"id":"item-1","status":"queued"}`))
+		_, _ = w.Write([]byte(`{"item":{"id":"item-1","user_id":"user-1","node_id":"node-1","prompts":["make portrait"],"input_s3_key":"input/key.png","input_s3_url":"https://cdn/input.png","status":"queued","created_at":"2026-05-02T10:00:00Z","updated_at":"2026-05-02T10:00:01Z"},"queue_size":7}`))
 	}))
 	t.Cleanup(server.Close)
 
 	service := newTestService(t, server.URL, []string{"secret-token"})
 
-	id, err := service.QueueImageForUser(context.Background(), "user-1", []byte("source-image"), "image/png", "make portrait")
+	item, err := service.QueueImageForUser(context.Background(), "user-1", []byte("source-image"), "image/png", "make portrait")
 	if err != nil {
 		t.Fatalf("QueueImageForUser() error: %v", err)
 	}
-	if id != "item-1" {
-		t.Fatalf("id = %q, want item-1", id)
+	if item.ID != "item-1" || item.UserID != "user-1" || item.NodeID != "node-1" || item.InputS3Key != "input/key.png" || item.InputS3URL != "https://cdn/input.png" || item.Status != "queued" || item.QueueSize != 7 {
+		t.Fatalf("item = %+v", item)
+	}
+	if len(item.Prompts) != 1 || item.Prompts[0] != "make portrait" {
+		t.Fatalf("prompts = %+v", item.Prompts)
+	}
+	if item.CreatedAt != "2026-05-02T10:00:00Z" || item.UpdatedAt != "2026-05-02T10:00:01Z" {
+		t.Fatalf("timestamps were not mapped: %+v", item)
 	}
 }
 
@@ -92,7 +98,7 @@ func TestListProcessedImages(t *testing.T) {
 		if req.NodeID != "node-1" || req.Status != aimini.StatusProcessed || req.Limit != 7 {
 			t.Fatalf("list request = %+v", req)
 		}
-		_, _ = w.Write([]byte(`[{"id":"item-1","user_id":"user-1","node_id":"node-1","status":"processed","output_s3_url":"https://cdn/result.png"}]`))
+		_, _ = w.Write([]byte(`[{"id":"item-1","user_id":"user-1","node_id":"node-1","prompts":["prompt"],"input_s3_key":"input/key.png","input_s3_url":"https://cdn/input.png","output_s3_key":"output/key.png","output_s3_url":"https://cdn/result.png","status":"processed","error":"retryable note","created_at":"2026-05-02T10:00:00Z","updated_at":"2026-05-02T10:00:10Z","processed_at":"2026-05-02T10:00:10Z"}]`))
 	}))
 	t.Cleanup(server.Close)
 
@@ -105,8 +111,11 @@ func TestListProcessedImages(t *testing.T) {
 	if len(items) != 1 {
 		t.Fatalf("len(items) = %d, want 1", len(items))
 	}
-	if got := items[0]; got.ID != "item-1" || got.UserID != "user-1" || got.NodeID != "node-1" || got.OutputURL != "https://cdn/result.png" || got.Status != "processed" {
+	if got := items[0]; got.ID != "item-1" || got.UserID != "user-1" || got.NodeID != "node-1" || got.InputS3Key != "input/key.png" || got.InputS3URL != "https://cdn/input.png" || got.OutputS3Key != "output/key.png" || got.OutputS3URL != "https://cdn/result.png" || got.OutputURL != "https://cdn/result.png" || got.Status != "processed" || got.Error != "retryable note" {
 		t.Fatalf("item = %+v", got)
+	}
+	if len(items[0].Prompts) != 1 || items[0].Prompts[0] != "prompt" || items[0].CreatedAt != "2026-05-02T10:00:00Z" || items[0].UpdatedAt != "2026-05-02T10:00:10Z" || items[0].ProcessedAt != "2026-05-02T10:00:10Z" {
+		t.Fatalf("full item data was not mapped: %+v", items[0])
 	}
 }
 

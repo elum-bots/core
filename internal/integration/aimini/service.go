@@ -35,11 +35,22 @@ type Service struct {
 }
 
 type QueuedImage struct {
-	ID        string
-	UserID    string
-	NodeID    string
-	OutputURL string
-	Status    string
+	ID             string
+	UserID         string
+	NodeID         string
+	Prompts        []string
+	NegativePrompt string
+	InputS3Key     string
+	InputS3URL     string
+	OutputS3Key    string
+	OutputS3URL    string
+	OutputURL      string
+	Status         string
+	Error          string
+	CreatedAt      string
+	UpdatedAt      string
+	ProcessedAt    string
+	QueueSize      int64
 }
 
 func NewService(source TokenSource, metrics *db.MetricsRepository, baseURL, nodeID string, timeout, ttl time.Duration, proxyURL string) (*Service, error) {
@@ -84,20 +95,20 @@ func (s *Service) Invalidate() {
 	s.client = nil
 }
 
-func (s *Service) QueueImageForUser(ctx context.Context, userID string, photo []byte, mimeType string, prompt string) (string, error) {
+func (s *Service) QueueImageForUser(ctx context.Context, userID string, photo []byte, mimeType string, prompt string) (QueuedImage, error) {
 	if s == nil {
-		return "", errors.New("aimini service is nil")
+		return QueuedImage{}, errors.New("aimini service is nil")
 	}
 	if len(photo) == 0 {
-		return "", errors.New("photo is empty")
+		return QueuedImage{}, errors.New("photo is empty")
 	}
 	userID = strings.TrimSpace(userID)
 	if userID == "" {
-		return "", errors.New("aimini user id is empty")
+		return QueuedImage{}, errors.New("aimini user id is empty")
 	}
 	prompt = strings.TrimSpace(prompt)
 	if prompt == "" {
-		return "", errors.New("prompt is empty")
+		return QueuedImage{}, errors.New("prompt is empty")
 	}
 	if strings.TrimSpace(mimeType) == "" {
 		mimeType = "image/jpeg"
@@ -105,22 +116,28 @@ func (s *Service) QueueImageForUser(ctx context.Context, userID string, photo []
 
 	client, err := s.clientFor(ctx)
 	if err != nil {
-		return "", err
+		return QueuedImage{}, err
 	}
 
-	item, err := client.Queue.Add(ctx, &aimini.AddQueueItemRequest{
+	addResp, err := client.Queue.Add(ctx, &aimini.AddQueueItemRequest{
 		Image:   aimini.ImageFromBytes(photo, imageFilename(mimeType), mimeType),
 		UserID:  userID,
 		NodeID:  s.nodeID,
 		Prompts: []string{prompt},
 	})
 	if err != nil {
-		return "", err
+		return QueuedImage{}, err
 	}
-	if item == nil || strings.TrimSpace(item.ID) == "" {
-		return "", errors.New("aimini returned empty queue item id")
+	if addResp == nil {
+		return QueuedImage{}, errors.New("aimini returned empty queue add response")
 	}
-	return item.ID, nil
+	item := &addResp.Item
+	if strings.TrimSpace(item.ID) == "" {
+		return QueuedImage{}, errors.New("aimini returned empty queue item id")
+	}
+	out := mapQueueItem(item)
+	out.QueueSize = addResp.QueueSize
+	return out, nil
 }
 
 func (s *Service) ListProcessedImages(ctx context.Context, limit int) ([]QueuedImage, error) {
@@ -142,18 +159,32 @@ func (s *Service) ListProcessedImages(ctx context.Context, limit int) ([]QueuedI
 	}
 	out := make([]QueuedImage, 0, len(items))
 	for _, item := range items {
-		if item == nil {
-			continue
-		}
-		out = append(out, QueuedImage{
-			ID:        item.ID,
-			UserID:    item.UserID,
-			NodeID:    item.NodeID,
-			OutputURL: item.OutputS3URL,
-			Status:    item.Status,
-		})
+		out = append(out, mapQueueItem(&item))
 	}
 	return out, nil
+}
+
+func mapQueueItem(item *aimini.QueueItem) QueuedImage {
+	if item == nil {
+		return QueuedImage{}
+	}
+	return QueuedImage{
+		ID:             item.ID,
+		UserID:         item.UserID,
+		NodeID:         item.NodeID,
+		Prompts:        append([]string(nil), item.Prompts...),
+		NegativePrompt: item.NegativePrompt,
+		InputS3Key:     item.InputS3Key,
+		InputS3URL:     item.InputS3URL,
+		OutputS3Key:    item.OutputS3Key,
+		OutputS3URL:    item.OutputS3URL,
+		OutputURL:      item.OutputS3URL,
+		Status:         item.Status,
+		Error:          item.Error,
+		CreatedAt:      item.CreatedAt,
+		UpdatedAt:      item.UpdatedAt,
+		ProcessedAt:    item.ProcessedAt,
+	}
 }
 
 func (s *Service) DownloadImage(ctx context.Context, outputURL string) ([]byte, error) {
@@ -171,7 +202,8 @@ func (s *Service) DeleteQueueItem(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
-	return client.Queue.Delete(ctx, &aimini.DeleteQueueItemRequest{ID: id})
+	_, err = client.Queue.Delete(ctx, &aimini.DeleteQueueItemRequest{ID: id})
+	return err
 }
 
 func (s *Service) RecordGeneration(ctx context.Context) {
